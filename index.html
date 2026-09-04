@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Instrumento interno de llamada: no se quiere en resultados de busqueda. -->
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="description" content="Lo que se queda en el chat cada mes, con los numeros de la clinica.">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AE%3C/text%3E%3C/svg%3E">
+    <title>Calculadora de pérdidas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+    :root { color-scheme: light dark; }
+    body { margin: 0; }
+    img { max-width: 100%; }
+    [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<style>
+  /* Hereda los tokens de templates/mapa-comercial/plantilla.html para que la
+     calculadora y los documentos que recibe el prospecto se vean del mismo lugar. */
+  :root {
+    --tinta:      #1A1D1A;
+    --suave:      #6B6F6A;
+    --acento:     #2F5D50;
+    --linea:      #E3E1DC;
+    --fondo:      #F6F5F2;
+    --superficie: #FFFFFF;
+    --tenue:      #FBFAF8;
+    --sombra:     0 1px 2px rgba(26, 29, 26, .05);
+
+    --texto: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --cifra: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --tinta:      #EDEFEA;
+      --suave:      #9AA09A;
+      --acento:     #7FB3A0;
+      --linea:      #2E3230;
+      --fondo:      #141614;
+      --superficie: #1C1F1D;
+      --tenue:      #191C1A;
+      --sombra:     0 1px 2px rgba(0, 0, 0, .3);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --tinta:      #EDEFEA;
+    --suave:      #9AA09A;
+    --acento:     #7FB3A0;
+    --linea:      #2E3230;
+    --fondo:      #141614;
+    --superficie: #1C1F1D;
+    --tenue:      #191C1A;
+    --sombra:     0 1px 2px rgba(0, 0, 0, .3);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--fondo);
+    color: var(--tinta);
+    font-family: var(--texto);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .marco {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 28px 24px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* --- Cabecera --- */
+
+  .cabecera { display: flex; flex-direction: column; gap: 4px; }
+
+  .rotulo {
+    font-family: var(--cifra);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--suave);
+    margin: 0;
+  }
+
+  h1 {
+    font-size: 30px;
+    font-weight: 600;
+    letter-spacing: -.02em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .entrada-sub {
+    margin: 0;
+    color: var(--suave);
+    max-width: 58ch;
+  }
+
+  /* --- Tablero --- */
+
+  .tablero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    gap: 20px;
+    align-items: stretch;
+  }
+
+  .panel {
+    background: var(--superficie);
+    border: 1px solid var(--linea);
+    border-radius: 10px;
+    box-shadow: var(--sombra);
+  }
+
+  /* --- Columna de campos --- */
+
+  .entradas { order: 1; padding: 20px; display: flex; flex-direction: column; gap: 18px; }
+
+  .aviso-ejemplo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 12px;
+    background: var(--tenue);
+    border: 1px dashed var(--linea);
+    border-radius: 7px;
+    font-size: 13px;
+    color: var(--suave);
+  }
+
+  .aviso-ejemplo[hidden] { display: none; }
+
+  .campo { display: flex; flex-direction: column; gap: 5px; }
+
+  .campo > label { font-size: 14px; font-weight: 600; line-height: 1.35; }
+
+  .pista { font-size: 12.5px; color: var(--suave); }
+
+  .caja {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--linea);
+    border-radius: 7px;
+    background: var(--fondo);
+    padding: 0 12px;
+  }
+
+  .caja:focus-within {
+    border-color: var(--acento);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--acento) 18%, transparent);
+  }
+
+  .caja .signo { font-family: var(--cifra); font-size: 15px; color: var(--suave); }
+
+  .caja input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: var(--tinta);
+    font-family: var(--cifra);
+    font-size: 17px;
+    padding: 11px 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .caja input::-webkit-outer-spin-button,
+  .caja input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .caja input[type=number] { -moz-appearance: textfield; }
+
+  /* --- Supuesto --- */
+
+  .supuesto {
+    border-top: 1px solid var(--linea);
+    padding-top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .supuesto-cabeza { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+
+  .supuesto-valor {
+    font-family: var(--cifra);
+    font-size: 19px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .supuesto-valor small { font-size: 12.5px; color: var(--suave); margin-left: 6px; }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 22px;
+    background: transparent;
+    margin: 0;
+  }
+
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 4px; border-radius: 2px; background: var(--linea);
+  }
+  input[type=range]::-moz-range-track {
+    height: 4px; border-radius: 2px; background: var(--linea);
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px; height: 20px; margin-top: -8px;
+    border-radius: 50%;
+    background: var(--acento);
+    border: 3px solid var(--superficie);
+    box-shadow: 0 0 0 1px var(--acento);
+    cursor: pointer;
+  }
+  input[type=range]::-moz-range-thumb {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--acento);
+    border: 3px solid var(--superficie);
+    box-shadow: 0 0 0 1px var(--acento);
+    cursor: pointer;
+  }
+  input[type=range]:focus-visible { outline: 2px solid var(--acento); outline-offset: 4px; border-radius: 4px; }
+
+  /* --- Moneda --- */
+
+  .moneda { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--suave); }
+
+  .segmentado { display: flex; border: 1px solid var(--linea); border-radius: 7px; overflow: hidden; }
+
+  .segmentado button {
+    font-family: var(--cifra);
+    font-size: 12px;
+    letter-spacing: .06em;
+    padding: 6px 13px;
+    border: 0;
+    background: var(--fondo);
+    color: var(--suave);
+    cursor: pointer;
+  }
+
+  .segmentado button[aria-pressed="true"] { background: var(--acento); color: var(--superficie); }
+  .segmentado button:focus-visible { outline: 2px solid var(--acento); outline-offset: -2px; }
+
+  /* --- Columna de resultado --- */
+
+  .resultado { order: 2; padding: 22px; display: flex; flex-direction: column; gap: 18px; }
+
+  .cifra-grande { display: flex; flex-direction: column; gap: 3px; }
+
+  .cifra-grande .rotulo { color: var(--suave); }
+
+  .monto {
+    margin: 0;
+    font-family: var(--cifra);
+    font-weight: 500;
+    font-size: clamp(38px, 6.5vw, 60px);
+    line-height: 1.02;
+    letter-spacing: -.03em;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+  }
+
+  .monto .div { color: var(--suave); font-size: .42em; letter-spacing: .04em; margin-left: 8px; }
+
+  .desglose { display: flex; flex-direction: column; border-top: 1px solid var(--linea); }
+
+  .fila {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--linea);
+    font-size: 14px;
+  }
+
+  .fila[hidden] { display: none; }
+  .fila .que { color: var(--suave); }
+  .fila .cuanto { font-family: var(--cifra); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .nota-sin-ticket {
+    margin: 0;
+    background: var(--tenue);
+    border-left: 2px solid var(--acento);
+    padding: 11px 14px;
+    border-radius: 0 7px 7px 0;
+    font-size: 14px;
+    color: var(--suave);
+  }
+
+  .nota-sin-ticket[hidden] { display: none; }
+
+  .revisar { margin: 0; font-size: 13px; color: var(--acento); }
+  .revisar[hidden] { display: none; }
+
+  .boton {
+    align-self: flex-start;
+    margin-top: auto;
+    font-family: var(--texto);
+    font-size: 13.5px;
+    padding: 8px 15px;
+    border-radius: 7px;
+    border: 1px solid var(--linea);
+    background: var(--fondo);
+    color: var(--tinta);
+    cursor: pointer;
+  }
+
+  .boton:hover { border-color: var(--acento); color: var(--acento); }
+  .boton:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+
+  .enlace {
+    font: inherit;
+    font-size: 13px;
+    border: 0;
+    background: none;
+    padding: 0;
+    color: var(--acento);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .enlace:focus-visible { outline: 2px solid var(--acento); outline-offset: 3px; border-radius: 3px; }
+
+  /* --- Pie --- */
+
+  .pie {
+    font-size: 12.5px;
+    color: var(--suave);
+    max-width: 78ch;
+    border-top: 1px solid var(--linea);
+    padding-top: 14px;
+    margin: 0;
+  }
+
+  .pie strong { color: var(--tinta); font-weight: 600; }
+
+  @media (max-width: 860px) {
+    .marco { padding: 20px 16px 40px; gap: 18px; }
+    h1 { font-size: 25px; }
+    .tablero { grid-template-columns: 1fr; gap: 14px; }
+    .resultado {
+      order: 0;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      padding: 16px;
+      gap: 12px;
+    }
+    .entradas { order: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<main class="marco">
+  <header class="cabecera">
+    <p class="rotulo">Healthbrand</p>
+    <h1>Calculadora de pérdidas</h1>
+    <p class="entrada-sub">Lo que se queda en el chat cada mes, con los números de la clínica.</p>
+  </header>
+
+  <div class="tablero">
+    <section class="panel resultado" aria-live="polite">
+      <div class="cifra-grande">
+        <p class="rotulo" id="rotuloMonto">Se queda en el chat cada mes</p>
+        <p class="monto" id="monto">$60,000<span class="div">MXN</span></p>
+      </div>
+
+      <p class="nota-sin-ticket" id="notaSinTicket" hidden>
+        Cuánto vale cada uno de esos pacientes lo saben ustedes mejor que nosotros, y esa
+        multiplicación es la que da el tamaño real de lo que hoy está en juego.
+      </p>
+
+      <div class="desglose">
+        <div class="fila" id="filaProporcion">
+          <span class="que">De cada 10 que escriben, se quedan sin respuesta</span>
+          <span class="cuanto" id="valProporcion">3</span>
+        </div>
+        <div class="fila" id="filaMes">
+          <span class="que">Conversaciones sin respuesta al mes</span>
+          <span class="cuanto" id="valMes">240</span>
+        </div>
+        <div class="fila" id="filaPacientes">
+          <span class="que">Pacientes que escriben y no llegan</span>
+          <span class="cuanto" id="valPacientes">24 al mes</span>
+        </div>
+        <div class="fila" id="filaAnual">
+          <span class="que">En un año</span>
+          <span class="cuanto" id="valAnual">$720,000 MXN</span>
+        </div>
+        <div class="fila" id="filaPorcentaje">
+          <span class="que">De lo que factura la clínica</span>
+          <span class="cuanto" id="valPorcentaje">20%</span>
+        </div>
+      </div>
+
+      <p class="revisar" id="revisar" hidden></p>
+
+      <button class="boton" type="button" id="btnCopiar">Copiar resumen</button>
+    </section>
+
+    <section class="panel entradas">
+      <div class="aviso-ejemplo" id="avisoEjemplo">
+        <span>Números de ejemplo. Escribe encima los de la clínica.</span>
+        <button class="enlace" type="button" id="btnLimpiar">Limpiar</button>
+      </div>
+
+      <div class="campo">
+        <label for="volumen">Personas que escriben al día</label>
+        <span class="pista">Entre WhatsApp, Instagram y Facebook</span>
+        <div class="caja">
+          <input id="volumen" type="number" min="0" step="1" inputmode="numeric" value="30">
+        </div>
+      </div>
+
+      <div class="campo">
+        <label for="fuga">De esas, cuántas se quedan sin respuesta o esperan horas</label>
+        <span class="pista">Noches, fines de semana y las horas en que nadie tiene el chat abierto</span>
+        <div class="caja">
+          <input id="fuga" type="number" min="0" step="1" inputmode="numeric" value="8">
+        </div>
+      </div>
+
+      <div class="campo">
+        <label for="ticket">Valor promedio del primer tratamiento</label>
+        <span class="pista">Lo que deja un paciente nuevo la primera vez que llega</span>
+        <div class="caja">
+          <span class="signo">$</span>
+          <input id="ticket" type="number" min="0" step="1" inputmode="numeric" value="2500">
+        </div>
+      </div>
+
+      <div class="campo">
+        <label for="factura">Lo que factura la clínica al mes</label>
+        <span class="pista">Para ver la pérdida como parte de lo que ya entra</span>
+        <div class="caja">
+          <span class="signo">$</span>
+          <input id="factura" type="number" min="0" step="1" inputmode="numeric" value="300000">
+        </div>
+      </div>
+
+      <div class="supuesto">
+        <div class="supuesto-cabeza">
+          <div>
+            <p class="rotulo">Supuesto conservador</p>
+            <label for="tasa" class="pista">De las conversaciones sin respuesta, cuántas habrían agendado</label>
+          </div>
+          <span class="supuesto-valor" id="tasaValor">10%<small>1 de cada 10</small></span>
+        </div>
+        <input id="tasa" type="range" min="2" max="40" step="1" value="10">
+      </div>
+
+      <div class="moneda">
+        <span>Moneda</span>
+        <div class="segmentado" role="group" aria-label="Moneda">
+          <button type="button" data-moneda="MXN" aria-pressed="true">MXN</button>
+          <button type="button" data-moneda="USD" aria-pressed="false">USD</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <p class="pie">
+    Responder en 5 minutos en vez de 30 hace <strong>21 veces más probable calificar</strong> a
+    quien escribe (MIT / InsideSales, Lead Response Management, Oldroyd 2007). Es probabilidad de
+    contacto y calificación, no de venta: el tamaño de la pérdida sale del supuesto de arriba, que
+    se dice en voz alta y se puede mover.
+  </p>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var $ = function (id) { return document.getElementById(id); };
+  var campos = ["volumen", "fuga", "ticket", "factura"];
+  var moneda = "MXN";
+  var enEjemplo = true;
+
+  var nf = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 0 });
+
+  function leer(id) {
+    var v = parseFloat($(id).value);
+    return isFinite(v) && v >= 0 ? v : null;
+  }
+
+  function dinero(n) {
+    return "$" + nf.format(Math.round(n)) + " " + moneda;
+  }
+
+  function calcular() {
+    var volumen = leer("volumen");
+    var fuga = leer("fuga");
+    var ticket = leer("ticket");
+    var factura = leer("factura");
+    var tasa = parseFloat($("tasa").value) / 100;
+
+    var sinRespuestaMes = fuga !== null ? fuga * 30 : null;
+    // El conteo de pacientes se redondea ANTES de multiplicar por el ticket, para que
+    // la cuenta que se ve en pantalla cuadre si el prospecto la hace de cabeza.
+    var pacientes = sinRespuestaMes !== null ? Math.round(sinRespuestaMes * tasa) : null;
+    var mensual = pacientes !== null && ticket ? pacientes * ticket : null;
+
+    // Cifra grande: en pesos si hay ticket, en pacientes si no. Nunca se inventa un ticket.
+    if (mensual !== null) {
+      $("rotuloMonto").textContent = "Se queda en el chat cada mes";
+      $("monto").innerHTML = "$" + nf.format(mensual) + '<span class="div">' + moneda + "</span>";
+      $("notaSinTicket").hidden = true;
+    } else if (pacientes !== null) {
+      $("rotuloMonto").textContent = "Pacientes que escriben y no llegan, cada mes";
+      $("monto").innerHTML = nf.format(pacientes) + '<span class="div">pacientes</span>';
+      $("notaSinTicket").hidden = false;
+    } else {
+      $("rotuloMonto").textContent = "Se queda en el chat cada mes";
+      $("monto").innerHTML = '<span class="div" style="margin:0">Faltan los números</span>';
+      $("notaSinTicket").hidden = true;
+    }
+
+    var proporcion = volumen && fuga !== null && volumen >= fuga
+      ? Math.round((fuga / volumen) * 10) : null;
+    fila("filaProporcion", "valProporcion", proporcion !== null, function () {
+      return nf.format(proporcion);
+    });
+
+    fila("filaMes", "valMes", sinRespuestaMes !== null, function () {
+      return nf.format(sinRespuestaMes);
+    });
+
+    fila("filaPacientes", "valPacientes", pacientes !== null && mensual !== null, function () {
+      return nf.format(pacientes) + " al mes";
+    });
+
+    fila("filaAnual", "valAnual", mensual !== null, function () {
+      return dinero(mensual * 12);
+    });
+
+    fila("filaPorcentaje", "valPorcentaje", mensual !== null && !!factura, function () {
+      return Math.round((mensual / factura) * 100) + "%";
+    });
+
+    var mal = volumen !== null && fuga !== null && fuga > volumen;
+    $("revisar").hidden = !mal;
+    if (mal) {
+      $("revisar").textContent = "No pueden quedarse sin respuesta más personas de las que escriben.";
+    }
+
+    var n = Math.max(1, Math.round(100 / (tasa * 100)));
+    $("tasaValor").innerHTML = Math.round(tasa * 100) + "%<small>1 de cada " + n + "</small>";
+  }
+
+  function fila(idFila, idValor, mostrar, texto) {
+    $(idFila).hidden = !mostrar;
+    if (mostrar) { $(idValor).textContent = texto(); }
+  }
+
+  function salirDelEjemplo() {
+    if (!enEjemplo) { return; }
+    enEjemplo = false;
+    $("avisoEjemplo").hidden = true;
+  }
+
+  campos.forEach(function (id) {
+    $(id).addEventListener("input", function () { salirDelEjemplo(); calcular(); });
+  });
+
+  $("tasa").addEventListener("input", calcular);
+
+  $("btnLimpiar").addEventListener("click", function () {
+    campos.forEach(function (id) { $(id).value = ""; });
+    salirDelEjemplo();
+    calcular();
+    $("volumen").focus();
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll("[data-moneda]"), function (b) {
+    b.addEventListener("click", function () {
+      moneda = b.dataset.moneda;
+      Array.prototype.forEach.call(document.querySelectorAll("[data-moneda]"), function (o) {
+        o.setAttribute("aria-pressed", String(o === b));
+      });
+      calcular();
+    });
+  });
+
+  $("btnCopiar").addEventListener("click", function () {
+    var volumen = leer("volumen"), fuga = leer("fuga"),
+        ticket = leer("ticket"), factura = leer("factura");
+    var tasa = parseFloat($("tasa").value) / 100;
+    var mes = fuga !== null ? fuga * 30 : null;
+    var pacientes = mes !== null ? Math.round(mes * tasa) : null;
+    var mensual = pacientes !== null && ticket ? pacientes * ticket : null;
+
+    var l = ["Calculadora de perdidas — " + new Date().toLocaleDateString("es-MX")];
+    if (volumen !== null) { l.push("Escriben al dia: " + nf.format(volumen)); }
+    if (fuga !== null) { l.push("Sin respuesta al dia: " + nf.format(fuga) + " (" + nf.format(mes) + " al mes)"); }
+    l.push("Supuesto: " + Math.round(tasa * 100) + "% habria agendado");
+    if (pacientes !== null) { l.push("Pacientes que no llegan: " + nf.format(pacientes) + " al mes"); }
+    if (ticket) { l.push("Ticket: " + dinero(ticket)); }
+    if (mensual !== null) {
+      l.push("Perdida mensual: " + dinero(mensual));
+      l.push("Al ano: " + dinero(mensual * 12));
+      if (factura) { l.push("Es el " + Math.round((mensual / factura) * 100) + "% de lo que factura"); }
+    } else {
+      l.push("Sin ticket: la cuenta cierra en pacientes, no en pesos.");
+    }
+
+    var texto = l.join("\n");
+    var listo = function () {
+      $("btnCopiar").textContent = "Copiado";
+      setTimeout(function () { $("btnCopiar").textContent = "Copiar resumen"; }, 1600);
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(listo, function () {
+        $("btnCopiar").textContent = "No se pudo copiar";
+      });
+    } else {
+      $("btnCopiar").textContent = "No se pudo copiar";
+    }
+  });
+
+  calcular();
+}());
+</script>
+</body>
+</html>
