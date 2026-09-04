@@ -442,7 +442,7 @@
           <span class="cuanto" id="valAnual">$720,000 MXN</span>
         </div>
         <div class="fila" id="filaPorcentaje">
-          <span class="que">De lo que factura la clínica</span>
+          <span class="que" id="quePorcentaje">De lo que factura la clínica</span>
           <span class="cuanto" id="valPorcentaje">20%</span>
         </div>
       </div>
@@ -496,15 +496,15 @@
           <span class="signo">$</span>
           <input id="ticket" type="number" min="0" step="1" inputmode="numeric" value="2500">
         </div>
+        <span class="pista calculado" id="avisoTicket" hidden>Sin este dato la cuenta cierra en pacientes, no en pesos.</span>
       </div>
 
       <div class="campo">
         <div class="campo-cabeza">
           <label for="factura">Lo que factura la clínica al mes</label>
           <div class="segmentado chico" role="group" aria-label="Cómo sabemos la facturación">
-            <button type="button" data-factura="total" aria-pressed="true">Total</button>
-            <button type="button" data-factura="consulta" aria-pressed="false">Consulta</button>
-            <button type="button" data-factura="vendido" aria-pressed="false">Más vendido</button>
+            <button type="button" data-factura="sabe" aria-pressed="true">Lo sabe</button>
+            <button type="button" data-factura="calcula" aria-pressed="false">Se calcula</button>
           </div>
         </div>
         <span class="pista">Para ver la pérdida como parte de lo que ya entra</span>
@@ -515,11 +515,6 @@
         </div>
 
         <div class="derivado" id="facturaDerivada" hidden>
-          <label for="precioUnitario" id="etiquetaUnitario">Precio de una consulta</label>
-          <div class="caja">
-            <span class="signo">$</span>
-            <input id="precioUnitario" type="number" min="0" step="1" inputmode="numeric">
-          </div>
           <label for="cuantas" id="etiquetaCuantas">Cuántas consultas hace al mes</label>
           <div class="caja">
             <input id="cuantas" type="number" min="0" step="1" inputmode="numeric">
@@ -562,7 +557,7 @@
   "use strict";
 
   var $ = function (id) { return document.getElementById(id); };
-  var campos = ["volumen", "fuga", "ticket", "factura", "precioUnitario", "cuantas"];
+  var campos = ["volumen", "fuga", "ticket", "factura", "cuantas"];
 
   // Que numero nos dio el prospecto para el valor de un paciente. La cuenta es la
   // misma; lo que cambia es como se llama y que significa el resultado.
@@ -571,19 +566,25 @@
       etiqueta: "Valor de un paciente nuevo",
       pista: "Lo que deja en promedio la primera vez que llega",
       nota: "",
-      resumen: "promedio"
+      resumen: "promedio",
+      cantidad: "Cuántos pacientes nuevos atiende al mes",
+      enQue: "en pacientes nuevos"
     },
     consulta: {
       etiqueta: "Precio de una consulta",
       pista: "Lo que cobra la primera vez, sin tratamiento",
       nota: "Calculado sobre el precio de una consulta, no sobre lo que deja un paciente nuevo completo.",
-      resumen: "precio de consulta"
+      resumen: "precio de consulta",
+      cantidad: "Cuántas consultas hace al mes",
+      enQue: "en consultas"
     },
     vendido: {
       etiqueta: "Precio del más vendido",
       pista: "Su tratamiento más vendido, no el más caro",
       nota: "Calculado sobre su tratamiento más vendido, no sobre el promedio.",
-      resumen: "tratamiento mas vendido"
+      resumen: "tratamiento mas vendido",
+      cantidad: "Cuántos de esos tratamientos hace al mes",
+      enQue: "en ese tratamiento"
     }
   };
 
@@ -595,7 +596,7 @@
   var moneda = "MXN";
   var periodo = "dia";        // en que registro contesto el prospecto
   var base = "promedio";      // de donde sale el valor de un paciente
-  var modoFactura = "total";  // si la facturacion viene entera o se arma
+  var modoFactura = "sabe";   // si la facturacion la sabe o se arma con el precio
   var enEjemplo = true;
 
   var nf = new Intl.NumberFormat("es-MX", { maximumFractionDigits: 0 });
@@ -615,11 +616,10 @@
     var ticket = leer("ticket");
     var tasa = parseFloat($("tasa").value) / 100;
 
-    var unitario = leer("precioUnitario");
     var cuantas = leer("cuantas");
-    var factura = modoFactura === "total"
+    var factura = modoFactura === "sabe"
       ? leer("factura")
-      : (unitario && cuantas ? unitario * cuantas : null);
+      : (ticket && cuantas ? ticket * cuantas : null);
 
     var sinRespuestaMes = fuga === null ? null : (periodo === "mes" ? fuga : fuga * 30);
     // El conteo de pacientes se redondea ANTES de multiplicar por el ticket, para que
@@ -673,20 +673,29 @@
     $("etiquetaVolumen").textContent =
       "Personas que escriben " + (periodo === "mes" ? "al mes" : "al día");
 
+    // Sin este dato la cuenta cae a pacientes a proposito, pero antes no decia cual
+    // era el campo que faltaba y se leia como una decision y no como un hueco.
+    $("avisoTicket").hidden = !(pacientes !== null && !ticket);
+
     $("etiquetaTicket").textContent = BASES[base].etiqueta;
     $("pistaTicket").textContent = BASES[base].pista;
     $("notaBase").textContent = BASES[base].nota;
     $("notaBase").hidden = !BASES[base].nota || mensual === null;
 
-    var derivada = modoFactura !== "total";
+    // Una facturacion armada con un solo precio es lo que factura EN ESA LINEA, no
+    // el total. Compararla contra la fuga sin decirlo infla el porcentaje.
+    var derivada = modoFactura === "calcula";
     $("cajaFacturaTotal").hidden = derivada;
     $("facturaDerivada").hidden = !derivada;
+    $("quePorcentaje").textContent = derivada
+      ? "De lo que factura " + BASES[base].enQue
+      : "De lo que factura la clínica";
     if (derivada) {
-      $("etiquetaUnitario").textContent = FACTURA[modoFactura].unitario;
-      $("etiquetaCuantas").textContent = FACTURA[modoFactura].cuantas;
+      $("etiquetaCuantas").textContent = BASES[base].cantidad;
       $("facturaCalculada").hidden = factura === null;
       if (factura !== null) {
-        $("facturaCalculada").textContent = "Factura unos " + dinero(factura) + " al mes";
+        $("facturaCalculada").textContent =
+          "Factura unos " + dinero(factura) + " al mes " + BASES[base].enQue;
       }
     }
 
@@ -767,10 +776,10 @@
 
   $("btnCopiar").addEventListener("click", function () {
     var volumen = leer("volumen"), fuga = leer("fuga"), ticket = leer("ticket");
-    var unitario = leer("precioUnitario"), cuantas = leer("cuantas");
-    var factura = modoFactura === "total"
+    var cuantas = leer("cuantas");
+    var factura = modoFactura === "sabe"
       ? leer("factura")
-      : (unitario && cuantas ? unitario * cuantas : null);
+      : (ticket && cuantas ? ticket * cuantas : null);
     var tasa = parseFloat($("tasa").value) / 100;
     var mes = fuga === null ? null : (periodo === "mes" ? fuga : fuga * 30);
     var pacientes = mes !== null ? Math.round(mes * tasa) : null;
@@ -791,8 +800,9 @@
       l.push("Al ano: " + dinero(mensual * 12));
       if (factura) {
         l.push("Es el " + Math.round((mensual / factura) * 100) + "% de lo que factura"
-               + (modoFactura === "total" ? ""
-                  : " (" + dinero(unitario) + " x " + nf.format(cuantas) + " al mes)"));
+               + (modoFactura === "sabe" ? ""
+                  : " " + BASES[base].enQue + " (" + nf.format(cuantas)
+                    + " al mes por " + dinero(ticket) + ")"));
       }
     } else {
       l.push("Sin ticket: la cuenta cierra en pacientes, no en pesos.");
