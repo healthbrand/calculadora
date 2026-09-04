@@ -173,6 +173,21 @@
 
   #notaBase { margin: 0; }
 
+  /* Prosa, no otra tabla: es la parte de la pagina que le habla al prospecto. */
+  .resumen {
+    border-top: 1px solid var(--linea);
+    padding-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-width: 64ch;
+  }
+
+  .resumen[hidden] { display: none; }
+  .resumen p { margin: 0; font-size: 14.5px; line-height: 1.62; }
+  .resumen strong { font-weight: 600; }
+  .resumen .cifra-inline { font-family: var(--cifra); font-variant-numeric: tabular-nums; }
+
   .calculado { color: var(--acento); }
   .calculado[hidden] { display: none; }
 
@@ -413,7 +428,7 @@
   <div class="tablero">
     <section class="panel resultado" aria-live="polite">
       <div class="cifra-grande">
-        <p class="rotulo" id="rotuloMonto">Se queda en el chat cada mes</p>
+        <p class="rotulo" id="rotuloMonto">Cantidad que se pierde al mes</p>
         <p class="monto" id="monto">$60,000<span class="div">MXN</span></p>
       </div>
 
@@ -430,7 +445,7 @@
           <span class="cuanto" id="valProporcion">3</span>
         </div>
         <div class="fila" id="filaMes">
-          <span class="que">Conversaciones sin respuesta al mes</span>
+          <span class="que">Pacientes que escriben y no reciben respuesta en los primeros 5 minutos</span>
           <span class="cuanto" id="valMes">240</span>
         </div>
         <div class="fila" id="filaPacientes">
@@ -442,10 +457,12 @@
           <span class="cuanto" id="valAnual">$720,000 MXN</span>
         </div>
         <div class="fila" id="filaPorcentaje">
-          <span class="que" id="quePorcentaje">De lo que factura la clínica</span>
+          <span class="que" id="quePorcentaje">Porcentaje de pérdida de lo que factura la clínica</span>
           <span class="cuanto" id="valPorcentaje">20%</span>
         </div>
       </div>
+
+      <div class="resumen" id="resumen" hidden></div>
 
       <p class="revisar" id="revisar" hidden></p>
 
@@ -629,7 +646,7 @@
 
     // Cifra grande: en pesos si hay ticket, en pacientes si no. Nunca se inventa un ticket.
     if (mensual !== null) {
-      $("rotuloMonto").textContent = "Se queda en el chat cada mes";
+      $("rotuloMonto").textContent = "Cantidad que se pierde al mes";
       $("monto").innerHTML = "$" + nf.format(mensual) + '<span class="div">' + moneda + "</span>";
       $("notaSinTicket").hidden = true;
     } else if (pacientes !== null) {
@@ -637,7 +654,7 @@
       $("monto").innerHTML = nf.format(pacientes) + '<span class="div">pacientes</span>';
       $("notaSinTicket").hidden = false;
     } else {
-      $("rotuloMonto").textContent = "Se queda en el chat cada mes";
+      $("rotuloMonto").textContent = "Cantidad que se pierde al mes";
       $("monto").innerHTML = '<span class="div" style="margin:0">Faltan los números</span>';
       $("notaSinTicket").hidden = true;
     }
@@ -688,8 +705,8 @@
     $("cajaFacturaTotal").hidden = derivada;
     $("facturaDerivada").hidden = !derivada;
     $("quePorcentaje").textContent = derivada
-      ? "De lo que factura " + BASES[base].enQue
-      : "De lo que factura la clínica";
+      ? "Porcentaje de pérdida de lo que factura " + BASES[base].enQue
+      : "Porcentaje de pérdida de lo que factura la clínica";
     if (derivada) {
       $("etiquetaCuantas").textContent = BASES[base].cantidad;
       $("facturaCalculada").hidden = factura === null;
@@ -699,8 +716,57 @@
       }
     }
 
+    escribirResumen({
+      volumen: volumen === null ? null : (periodo === "mes" ? volumen : volumen * 30),
+      sinRespuestaMes: sinRespuestaMes, pacientes: pacientes,
+      mensual: mensual, factura: factura, tasa: tasa
+    });
+
     var n = Math.max(1, Math.round(100 / (tasa * 100)));
     $("tasaValor").innerHTML = Math.round(tasa * 100) + "%<small>1 de cada " + n + "</small>";
+  }
+
+  // Resumen ejecutivo. Solo usa numeros que ya estan en pantalla. Lo unico que
+  // afirma de Healthbrand es la garantia de respuesta, que es lo que esta por
+  // escrito; no promete conversion, porque no hay con que sostenerla.
+  function escribirResumen(datos) {
+    var caja = $("resumen");
+    if (datos.pacientes === null || !datos.sinRespuestaMes) {
+      caja.hidden = true;
+      return;
+    }
+    caja.hidden = false;
+
+    var n = function (v) { return '<span class="cifra-inline">' + nf.format(v) + "</span>"; };
+    var m = function (v) { return '<span class="cifra-inline">' + dinero(v) + "</span>"; };
+    var cada = Math.max(1, Math.round(100 / (datos.tasa * 100)));
+
+    var uno = "Cada mes " + (datos.volumen
+      ? "te escriben " + n(datos.volumen) + " personas y " + n(datos.sinRespuestaMes) + " de ellas"
+      : n(datos.sinRespuestaMes) + " personas te escriben y") +
+      " se quedan esperando una respuesta. Suponiendo que solo <strong>1 de cada " + cada +
+      "</strong> hubiera agendado, son <strong>" + n(datos.pacientes) +
+      " pacientes al mes</strong> que ya te habían buscado y no llegaron a tu clínica";
+
+    if (datos.mensual !== null) {
+      uno += ", y eso es <strong>" + m(datos.mensual) + " al mes</strong>, " +
+        m(datos.mensual * 12) + " al año";
+      if (datos.factura) {
+        uno += ", el <strong>" + Math.round((datos.mensual / datos.factura) * 100) +
+          "%</strong> de lo que facturas " +
+          (modoFactura === "sabe" ? "hoy" : BASES[base].enQue);
+      }
+    }
+    uno += ".";
+
+    var dos = "Con Healthbrand esas " + n(datos.sinRespuestaMes) +
+      " conversaciones reciben respuesta en <strong>menos de 5 minutos</strong>, de día, " +
+      "de noche y en fin de semana, y eso es lo que te garantizamos por escrito. " +
+      "No te prometemos que todas agenden: ese 1 de cada " + cada +
+      " es un supuesto conservador y lo puedes mover ahí mismo. Lo que sí cambia es que " +
+      "dejen de quedarse sin quien les conteste.";
+
+    caja.innerHTML = "<p>" + uno + "</p><p>" + dos + "</p>";
   }
 
   function fila(idFila, idValor, mostrar, texto) {
