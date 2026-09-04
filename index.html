@@ -544,7 +544,7 @@
         <div class="supuesto-cabeza">
           <div>
             <p class="rotulo">Supuesto conservador</p>
-            <label for="tasa" class="pista">De las conversaciones sin respuesta, cuántas habrían agendado</label>
+            <label for="tasa" class="pista" id="etiquetaTasa">De las conversaciones sin respuesta, cuántas habrían agendado</label>
           </div>
           <span class="supuesto-valor" id="tasaValor">10%<small>1 de cada 10</small></span>
         </div>
@@ -721,6 +721,10 @@
       sinRespuestaMes: sinRespuestaMes, pacientes: pacientes,
       mensual: mensual, factura: factura, tasa: tasa
     });
+
+    $("etiquetaTasa").textContent = sinRespuestaMes
+      ? "De esas " + nf.format(sinRespuestaMes) + " conversaciones al mes, cuántas habrían agendado"
+      : "De las conversaciones sin respuesta, cuántas habrían agendado";
 
     var n = Math.max(1, Math.round(100 / (tasa * 100)));
     $("tasaValor").innerHTML = Math.round(tasa * 100) + "%<small>1 de cada " + n + "</small>";
