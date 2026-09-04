@@ -746,29 +746,25 @@
     var cada = Math.max(1, Math.round(100 / (datos.tasa * 100)));
 
     var uno = "Cada mes " + (datos.volumen
-      ? "te escriben " + n(datos.volumen) + " personas y " + n(datos.sinRespuestaMes) + " de ellas"
-      : n(datos.sinRespuestaMes) + " personas te escriben y") +
-      " se quedan esperando una respuesta. Suponiendo que solo <strong>1 de cada " + cada +
-      "</strong> hubiera agendado, son <strong>" + n(datos.pacientes) +
-      " pacientes al mes</strong> que ya te habían buscado y no llegaron a tu clínica";
+      ? "te escriben " + n(datos.volumen) + " personas y al menos " + n(datos.sinRespuestaMes) + " de ellas"
+      : "al menos " + n(datos.sinRespuestaMes) + " personas te escriben y") +
+      " se quedan esperando una respuesta. Suponiendo que sólo 1 de cada " + cada +
+      " hubiera agendado, son " + n(datos.pacientes) +
+      " pacientes al mes que no llegaron a tu clínica";
 
     if (datos.mensual !== null) {
-      uno += ", y eso es <strong>" + m(datos.mensual) + " al mes</strong>, " +
+      uno += ", lo que representa <strong>" + m(datos.mensual) + " al mes</strong> o " +
         m(datos.mensual * 12) + " al año";
       if (datos.factura) {
-        uno += ", el <strong>" + Math.round((datos.mensual / datos.factura) * 100) +
-          "%</strong> de lo que facturas " +
-          (modoFactura === "sabe" ? "hoy" : BASES[base].enQue);
+        uno += ", el " + Math.round((datos.mensual / datos.factura) * 100) +
+          "% de lo que facturas " + (modoFactura === "sabe" ? "hoy" : BASES[base].enQue);
       }
     }
     uno += ".";
 
-    var dos = "Con Healthbrand esas " + n(datos.sinRespuestaMes) +
-      " conversaciones reciben respuesta en <strong>menos de 5 minutos</strong>, de día, " +
-      "de noche y en fin de semana, y eso es lo que te garantizamos por escrito. " +
-      "No te prometemos que todas agenden: ese 1 de cada " + cada +
-      " es un supuesto conservador y lo puedes mover ahí mismo. Lo que sí cambia es que " +
-      "dejen de quedarse sin quien les conteste.";
+    var dos = "Con Healthbrand, esas " + n(datos.sinRespuestaMes) +
+      " conversaciones reciben respuesta en <strong>menos de 5 minutos</strong> a cualquier hora, " +
+      "los 365 días del año, GARANTIZADO por escrito.";
 
     caja.innerHTML = "<p>" + uno + "</p><p>" + dos + "</p>";
   }
